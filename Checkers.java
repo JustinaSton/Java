@@ -17,10 +17,9 @@ public class Checkers extends JPanel {
         window.setVisible(true);
     }
 
-    private JLabel message;
+    public JLabel message;
 
     public Checkers() {
-
         setLayout(null);
         setPreferredSize( new Dimension(500,400) );
         setBackground(Color.black);
@@ -29,137 +28,141 @@ public class Checkers extends JPanel {
         add(message);
         board.setBounds(160,100,164,164);
         message.setBounds(65, 50, 350, 30);
-
     }
 
-   private class Board extends JPanel implements MouseListener {
+    private class Board extends JPanel implements MouseListener {
+        Checkers.CheckersData board;
+        int currentPlayer;
+        int selectedRow, selectedCol;
+        CheckersMoves[] possibleMoves;
 
-       Checkers.CheckersData board;
-       int currentPlayer;
-       int selectedRow, selectedCol;
-       CheckersMove[] possibleMoves;
-       Board() {
-           setBackground(Color.BLACK);
-           addMouseListener(this);
-           message = new JLabel("",JLabel.CENTER);
-           message.setFont(new Font("Comic Sans MS", Font.HANGING_BASELINE, 20));
-           message.setForeground(Color.white);
-           board = new Checkers.CheckersData();
-           startNewGame();
-       }
+        Board() {
+            setBackground(Color.BLACK);
+            addMouseListener(this);
+            message = new JLabel("",JLabel.CENTER);
+            message.setFont(new Font("Comic Sans MS", Font.HANGING_BASELINE, 20));
+            message.setForeground(Color.white);
+            board = new Checkers.CheckersData();
+            startNewGame();
+        }
 
-       void startNewGame() {
-           board.setUpGame();
-           currentPlayer = Checkers.CheckersData.RED;
-           possibleMoves = board.getPossibleMoves(Checkers.CheckersData.RED);
-           selectedRow = -1;
-           message.setText("RED - your turn.");
-           repaint();
-       }
+        void startNewGame() {
+            currentPlayer = Checkers.CheckersData.RED;
+            possibleMoves = board.getPossibleMoves(currentPlayer);
+            selectedRow = -1;
+            message.setText("RED - your turn.");
+        }
 
-       void ClickSquare(int row, int col) {
+        void ClickSquare(int row, int col) {
+            for (int i = 0; i < possibleMoves.length; i++)
+            {
+                if (possibleMoves[i].startRow == row && possibleMoves[i].startCol == col) {
+                    selectedRow = row;
+                    selectedCol = col;
+                    if (currentPlayer == Checkers.CheckersData.RED)
+                        message.setText("RED - your turn.");
+                    else
+                        message.setText("BLACK - your turn.");
+                    return;
+                }
+            }
 
-           for (int i = 0; i < possibleMoves.length; i++)
-           {
-               if (possibleMoves[i].startRow == row && possibleMoves[i].startCol == col) {
-                   selectedRow = row;
-                   selectedCol = col;
-                   if (currentPlayer == Checkers.CheckersData.RED)
-                       message.setText("RED - your turn.");
-                   else
-                       message.setText("BLACK - your turn.");
-                   repaint();
-                   return;
-               }
-           }
+            if (selectedRow < 0) {
+                message.setText("Click the checker you want to move.");
+                return;
+            }
 
-           if (selectedRow < 0) {
-               message.setText("Click the checker you want to move.");
-               return;
-           }
+            for (int i = 0; i < possibleMoves.length; i++)
+                if (possibleMoves[i].goToRow == row && possibleMoves[i].goToCol == col) {
+                    doMoveChecker(possibleMoves[i]);
+                    return;
+                }
+            message.setText("Click the square you want to go to.");
+        }
 
-           for (int i = 0; i < possibleMoves.length; i++)
-               if (possibleMoves[i].goToRow == row && possibleMoves[i].goToCol == col) {
-                   doMoveChecker(possibleMoves[i]);
-                   return;
-               }
-           message.setText("Click the square you want to go to.");
-       }
+        void doMoveChecker(CheckersMoves move) {
+            board.moveChecker(move);
+            if (move.isJump()) {
+                possibleMoves = board.getPossibleJumpsFrom(currentPlayer,move.goToRow,move.goToCol);
+                if (possibleMoves != null) {
+                    if (currentPlayer == Checkers.CheckersData.RED)
+                        message.setText("RED - you must jump again.");
+                    else
+                        message.setText("BLACK - you must jump again.");
+                    repaint();
+                    return;
+                }
+            }
+            if (currentPlayer == Checkers.CheckersData.RED) currentPlayer = Checkers.CheckersData.BLACK;
+            else currentPlayer = Checkers.CheckersData.RED;
+            possibleMoves = board.getPossibleMoves(currentPlayer);
+            if (possibleMoves == null)
+            {
+                if(currentPlayer == Checkers.CheckersData.RED)  message.setText("BLACK wins!");
+                else message.setText("RED wins!");
+            }
+            if (possibleMoves[0].isJump())
+                message.setText("Opponent - you must jump.");
+            else
+                message.setText("Opponent - make your move.");
 
-       void doMoveChecker(CheckersMove move) {
+            selectedRow = -1;
+            repaint();
+        }
 
-           board.moveChecker(move);
-           if (move.isJump()) {
-               possibleMoves = board.getPossibleJumpsFrom(currentPlayer,move.goToRow,move.goToCol);
-               if (possibleMoves != null) {
-                   if (currentPlayer == Checkers.CheckersData.RED)
-                       message.setText("RED - you must jump again.");
-                   else
-                       message.setText("BLACK - you must jump again.");
-                   selectedRow = move.goToRow;
-                   selectedCol = move.goToCol;
-                   repaint();
-                   return;
-               }
-           }
+        public void paintComponent(Graphics g) {
+            Color lightBrown = new Color(255, 229, 204);
+            Color darkerBrown = new Color(255, 178, 102);
+            for (int row = 0; row < 8; row++) {
+                for (int col = 0; col < 8; col++) {
+                    if ( row % 2 == col % 2 )
+                        g.setColor(lightBrown);
+                    else
+                        g.setColor(darkerBrown);
+                    g.fillRect(2+ col*20, 2+ row*20, 20, 20);
+                    switch (board.pieceAt(row,col)) {
+                        case Checkers.CheckersData.RED:
+                            g.setColor(Color.RED);
+                            g.fillOval(4+ col*20, 4+ row*20, 15, 15);
+                            break;
+                        case Checkers.CheckersData.BLACK:
+                            g.setColor(Color.BLACK);
+                            g.fillOval(4 + col*20, 4 + row*20, 15, 15);
+                            break;
+                        case CheckersData.KING_R:
+                            g.setColor(Color.RED);
+                            g.fillOval(4 + col*20, 4 + row*20, 15, 15);
+                            g.setColor(Color.YELLOW);
+                            g.drawOval(4 + col*20, 4 + row*20, 15, 15);
+                            g.drawString("K", 7 + col*20, 16 + row*20);
+                            break;
+                        case CheckersData.KING_B:
+                            g.setColor(Color.BLACK);
+                            g.fillOval(4 + col*20, 4 + row*20, 15, 15);
+                            g.setColor(Color.YELLOW);
+                            g.drawOval(4 + col*20, 4 + row*20, 15, 15);
+                            g.drawString("K", 7 + col*20, 16 + row*20);
+                            break;
+                    }
+                }
+            }
+        }
+        public void mousePressed(MouseEvent evt) {
+            int col = (evt.getX()) / 20;
+            int row = (evt.getY()) / 20;
+            if (col >= 0 && col < 8 && row >= 0 && row < 8)
+                ClickSquare(row,col);
+        }
+        public void mouseReleased(MouseEvent evt) { }
+        public void mouseClicked(MouseEvent evt) { }
+        public void mouseEntered(MouseEvent evt) { }
+        public void mouseExited(MouseEvent evt) { }
+    }
 
-           if (currentPlayer == Checkers.CheckersData.RED) currentPlayer = Checkers.CheckersData.BLACK;
-           else currentPlayer = Checkers.CheckersData.RED;
-           possibleMoves = board.getPossibleMoves(currentPlayer);
-           if (possibleMoves == null)
-           {
-               if(currentPlayer == Checkers.CheckersData.RED)  message.setText("BLACK wins!");
-               else message.setText("RED wins!");
-           }
-               if (possibleMoves[0].isJump())
-                   message.setText("Opponent - you must jump.");
-               else
-                   message.setText("Opponent - make your move.");
-
-           selectedRow = -1;
-           repaint();
-
-       }
-       public void paintComponent(Graphics g) {
-           Color lightBrown = new Color(255, 229, 204);
-           Color darkerBrown = new Color(255, 178, 102);
-           for (int row = 0; row < 8; row++) {
-               for (int col = 0; col < 8; col++) {
-                   if ( row % 2 == col % 2 )
-                       g.setColor(lightBrown);
-                   else
-                       g.setColor(darkerBrown);
-                   g.fillRect(2+ col*20, 2+ row*20, 20, 20);
-                   switch (board.pieceAt(row,col)) {
-                       case Checkers.CheckersData.RED:
-                           g.setColor(Color.RED);
-                           g.fillOval(4+ col*20, 4+ row*20, 15, 15);
-                           break;
-                       case Checkers.CheckersData.BLACK:
-                           g.setColor(Color.BLACK);
-                           g.fillOval(4 + col*20, 4 + row*20, 15, 15);
-                           break;
-                   }
-               }
-           }
-       }
-       public void mousePressed(MouseEvent evt) {
-          int col = (evt.getX()) / 20;
-          int row = (evt.getY()) / 20;
-           if (col >= 0 && col < 8 && row >= 0 && row < 8)
-               ClickSquare(row,col);
-       }
-
-       public void mouseReleased(MouseEvent evt) { }
-       public void mouseClicked(MouseEvent evt) { }
-       public void mouseEntered(MouseEvent evt) { }
-       public void mouseExited(MouseEvent evt) { }
-   }
-
-    public class CheckersMove {
+    public class CheckersMoves {
         int startRow, startCol;
         int goToRow, goToCol;
-        CheckersMove(int r1, int c1, int r2, int c2) {
+        CheckersMoves(int r1, int c1, int r2, int c2) {
             startRow = r1;
             startCol = c1;
             goToRow = r2;
@@ -174,7 +177,9 @@ public class Checkers extends JPanel {
         static final int
                 EMPTY = 0,
                 RED = 1,
-                BLACK = 2;
+                BLACK = 2,
+                KING_R = 3,
+                KING_B = 4;
 
         int[][] board;
 
@@ -191,8 +196,6 @@ public class Checkers extends JPanel {
                             board[row][col] = BLACK;
                         else if (row > 4)
                             board[row][col] = RED;
-                        else
-                            board[row][col] = EMPTY;
                     }
                     else {
                         board[row][col] = EMPTY;
@@ -205,7 +208,7 @@ public class Checkers extends JPanel {
             return board[row][col];
         }
 
-        void moveChecker(CheckersMove move) {
+        void moveChecker(CheckersMoves move) {
             moveChecker(move.startRow, move.startCol, move.goToRow, move.goToCol);
         }
 
@@ -213,26 +216,37 @@ public class Checkers extends JPanel {
             board[goToRow][goToCol] = board[startRow][startCol];
             board[startRow][startCol] = EMPTY;
             if (startRow - goToRow == 2 || startRow - goToRow == -2) {
-                int jumpRow = (startRow + goToRow) / 2;
-                int jumpCol = (startCol + goToCol) / 2;
-                board[jumpRow][jumpCol] = EMPTY;
+                int betweenRow = (startRow + goToRow) / 2;
+                int betweenCol = (startCol + goToCol) / 2;
+                board[betweenRow][betweenCol] = EMPTY;
             }
+            if (goToRow == 0 && board[goToRow][goToCol] == RED)
+                board[goToRow][goToCol] = KING_R;
+            if (goToRow == 7 && board[goToRow][goToCol] == BLACK)
+                board[goToRow][goToCol] = KING_B;
         }
-        CheckersMove[] getPossibleMoves(int player) {
 
-            ArrayList<CheckersMove> moves = new ArrayList<CheckersMove>();
+        CheckersMoves[] getPossibleMoves(int player) {
 
-            for (int row = 0; row < 8; row++) {
+            int playerKing;
+            if (player == RED)
+                playerKing = KING_R;
+            else
+                playerKing = KING_B;
+
+            ArrayList<CheckersMoves> moves = new ArrayList<CheckersMoves>();
+
+           for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
-                        if (board[row][col] == player) {
-                        if (canJump(player, row, col, row+1, col+1, row+2, col+2))
-                            moves.add(new CheckersMove(row, col, row+2, col+2));
-                        if (canJump(player, row, col, row-1, col+1, row-2, col+2))
-                            moves.add(new CheckersMove(row, col, row-2, col+2));
-                        if (canJump(player, row, col, row+1, col-1, row+2, col-2))
-                            moves.add(new CheckersMove(row, col, row+2, col-2));
-                        if (canJump(player, row, col, row-1, col-1, row-2, col-2))
-                            moves.add(new CheckersMove(row, col, row-2, col-2));
+                    if (board[row][col] == player || board[row][col] == playerKing) {
+                        if (canJump(player,row,  row+1, col+1, row+2, col+2))
+                            moves.add(new CheckersMoves(row, col, row+2, col+2));
+                        if (canJump(player,row,  row-1, col+1, row-2, col+2))
+                            moves.add(new CheckersMoves(row, col, row-2, col+2));
+                        if (canJump(player,row,  row+1, col-1, row+2, col-2))
+                            moves.add(new CheckersMoves(row, col, row+2, col-2));
+                        if (canJump(player,row,  row-1, col-1, row-2, col-2))
+                            moves.add(new CheckersMoves(row, col, row-2, col-2));
                     }
                 }
             }
@@ -240,15 +254,15 @@ public class Checkers extends JPanel {
             if (moves.size() == 0) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
-                            if (board[row][col] == player){
-                            if (canMove(player,row,col,row+1,col+1))
-                                moves.add(new CheckersMove(row,col,row+1,col+1));
-                            if (canMove(player,row,col,row-1,col+1))
-                                moves.add(new CheckersMove(row,col,row-1,col+1));
-                            if (canMove(player,row,col,row+1,col-1))
-                                moves.add(new CheckersMove(row,col,row+1,col-1));
-                            if (canMove(player,row,col,row-1,col-1))
-                                moves.add(new CheckersMove(row,col,row-1,col-1));
+                        if (board[row][col] == player || board[row][col] == playerKing){
+                            if (canMove(player,row,row+1,col+1))
+                                moves.add(new CheckersMoves(row,col,row+1,col+1));
+                            if (canMove(player,row,row-1,col+1))
+                                moves.add(new CheckersMoves(row,col,row-1,col+1));
+                            if (canMove(player,row,row+1,col-1))
+                                moves.add(new CheckersMoves(row,col,row+1,col-1));
+                            if (canMove(player,row,row-1,col-1))
+                                moves.add(new CheckersMoves(row,col,row-1,col-1));
                         }
                     }
                 }
@@ -257,77 +271,78 @@ public class Checkers extends JPanel {
             if (moves.size() == 0)
                 return null;
             else {
-                CheckersMove[] moveArray = new CheckersMove[moves.size()];
+                CheckersMoves[] moveArray = new CheckersMoves[moves.size()];
                 for (int i = 0; i < moves.size(); i++)
                     moveArray[i] = moves.get(i);
                 return moveArray;
             }
         }
 
-        CheckersMove[] getPossibleJumpsFrom(int player, int row, int col) {
+        CheckersMoves[] getPossibleJumpsFrom(int player, int row, int col) {
 
-            ArrayList<CheckersMove> moves = new ArrayList<CheckersMove>();
-            if (board[row][col] == player)
+            int playerKing;
+            if (player == RED)
+                playerKing = KING_R;
+            else
+                playerKing = KING_B;
+            ArrayList<CheckersMoves> moves = new ArrayList<CheckersMoves>();
+            if (board[row][col] == player || board[row][col] == playerKing)
             {
-                if (canJump(player, row, col, row+1, col+1, row+2, col+2))
-                    moves.add(new CheckersMove(row, col, row+2, col+2));
-                if (canJump(player, row, col, row-1, col+1, row-2, col+2))
-                    moves.add(new CheckersMove(row, col, row-2, col+2));
-                if (canJump(player, row, col, row+1, col-1, row+2, col-2))
-                    moves.add(new CheckersMove(row, col, row+2, col-2));
-                if (canJump(player, row, col, row-1, col-1, row-2, col-2))
-                    moves.add(new CheckersMove(row, col, row-2, col-2));
+                if (canJump(player,row,row+1, col+1, row+2, col+2))
+                    moves.add(new CheckersMoves(row, col, row+2, col+2));
+                if (canJump(player,row, row-1, col+1, row-2, col+2))
+                    moves.add(new CheckersMoves(row, col, row-2, col+2));
+                if (canJump(player,row, row+1, col-1, row+2, col-2))
+                    moves.add(new CheckersMoves(row, col, row+2, col-2));
+                if (canJump(player, row, row-1, col-1, row-2, col-2))
+                    moves.add(new CheckersMoves(row, col, row-2, col-2));
             }
             if (moves.size() == 0)
                 return null;
             else {
-                CheckersMove[] moveArray = new CheckersMove[moves.size()];
+                CheckersMoves[] moveArray = new CheckersMoves[moves.size()];
                 for (int i = 0; i < moves.size(); i++)
                     moveArray[i] = moves.get(i);
                 return moveArray;
             }
         }
 
-        private boolean canJump(int player, int r1, int c1, int r2, int c2, int r3, int c3) {
 
-            if (r3 < 0 || r3 >= 8 || c3 < 0 || c3 >= 8)
-                return false;
+        private boolean canMove(int player, int r1, int r2, int c2) {
 
-            if (board[r3][c3] != EMPTY)
+            if (r2 < 0 || r2 >= 8 || c2 < 0 || c2 >= 8 || board[r2][c2] != EMPTY)
                 return false;
 
             if (player == RED) {
-                if (board[r1][c1] == RED && r3 > r1)
-                    return false;
-                if (board[r2][c2] != BLACK)
+                if (r2 > r1)
                     return false;
                 return true;
             }
             else {
-                if (board[r1][c1] == BLACK && r3 < r1)
-                    return false;
-                if (board[r2][c2] != RED )
+                if (r2 < r1)
                     return false;
                 return true;
             }
 
         }
 
-        private boolean canMove(int player, int r1, int c1, int r2, int c2) {
+        private boolean canJump(int player,int r1, int r2, int c2, int r3, int c3) {
 
-            if (r2 < 0 || r2 >= 8 || c2 < 0 || c2 >= 8)
-                return false;
-
-            if (board[r2][c2] != EMPTY)
+            if (r3 < 0 || r3 >= 8 || c3 < 0 || c3 >= 8 || board[r3][c3] != EMPTY)
                 return false;
 
             if (player == RED) {
-                if (board[r1][c1] == RED && r2 > r1)
+                if (r3 > r1 )
+                    return false;
+                if (board[r2][c2] != BLACK && board[r2][c2] != KING_B)
                     return false;
                 return true;
             }
-            else {
-                if (board[r1][c1] == BLACK && r2 < r1)
+
+           else {
+                if (r3 < r1)
+                    return false;
+                if (board[r2][c2] != RED && board[r2][c2] != KING_R )
                     return false;
                 return true;
             }
