@@ -2,6 +2,8 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Checkers extends JPanel {
 
@@ -11,8 +13,7 @@ public class Checkers extends JPanel {
         window.setContentPane(content);
         window.pack();
         Dimension screensize = Toolkit.getDefaultToolkit().getScreenSize();
-        window.setLocation( (screensize.width - window.getWidth())/2,
-                (screensize.height - window.getHeight())/2 );
+        window.setLocation ( (screensize.width - window.getWidth())/2, (screensize.height - window.getHeight())/2 );
         window.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
         window.setVisible(true);
     }
@@ -81,7 +82,7 @@ public class Checkers extends JPanel {
         }
 
         void doMoveChecker(CheckersMoves move) {
-            board.moveChecker(move);
+            board.moveChecker(move.startRow, move.startCol, move.goToRow, move.goToCol);
             if (move.isJump()) {
                 possibleMoves = board.getPossibleJumpsFrom(currentPlayer,move.goToRow,move.goToCol);
                 if (possibleMoves != null) {
@@ -89,6 +90,8 @@ public class Checkers extends JPanel {
                         message.setText("RED - you must jump again.");
                     else
                         message.setText("BLACK - you must jump again.");
+                    selectedRow = move.goToRow;
+                    selectedCol = move.goToCol;
                     repaint();
                     return;
                 }
@@ -96,11 +99,13 @@ public class Checkers extends JPanel {
             if (currentPlayer == Checkers.CheckersData.RED) currentPlayer = Checkers.CheckersData.BLACK;
             else currentPlayer = Checkers.CheckersData.RED;
             possibleMoves = board.getPossibleMoves(currentPlayer);
-            if (possibleMoves == null)
+           if (possibleMoves == null)
             {
                 if(currentPlayer == Checkers.CheckersData.RED)  message.setText("BLACK wins!");
                 else message.setText("RED wins!");
+                return;
             }
+
             if (possibleMoves[0].isJump())
                 message.setText("Opponent - you must jump.");
             else
@@ -168,7 +173,7 @@ public class Checkers extends JPanel {
             goToRow = r2;
             goToCol = c2;
         }
-        boolean isJump() {  // naudojama tuo atveju, jei kertame saske (reikia pereiti dviem langeliais i virsu arba apaciai)
+        boolean isJump() {
             return (startRow - goToRow == 2 || startRow - goToRow == -2);
         }
     }
@@ -208,10 +213,6 @@ public class Checkers extends JPanel {
             return board[row][col];
         }
 
-        void moveChecker(CheckersMoves move) {
-            moveChecker(move.startRow, move.startCol, move.goToRow, move.goToCol);
-        }
-
         void moveChecker(int startRow, int startCol, int goToRow, int goToCol) {
             board[goToRow][goToCol] = board[startRow][startCol];
             board[startRow][startCol] = EMPTY;
@@ -227,7 +228,6 @@ public class Checkers extends JPanel {
         }
 
         CheckersMoves[] getPossibleMoves(int player) {
-
             int playerKing;
             if (player == RED)
                 playerKing = KING_R;
@@ -236,16 +236,16 @@ public class Checkers extends JPanel {
 
             ArrayList<CheckersMoves> moves = new ArrayList<CheckersMoves>();
 
-           for (int row = 0; row < 8; row++) {
+            for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
                     if (board[row][col] == player || board[row][col] == playerKing) {
-                        if (canJump(player,row,  row+1, col+1, row+2, col+2))
+                        if (canJump(player,row, col,row+1, col+1, row+2, col+2))
                             moves.add(new CheckersMoves(row, col, row+2, col+2));
-                        if (canJump(player,row,  row-1, col+1, row-2, col+2))
+                        if (canJump(player,row, col, row-1, col+1, row-2, col+2))
                             moves.add(new CheckersMoves(row, col, row-2, col+2));
-                        if (canJump(player,row,  row+1, col-1, row+2, col-2))
+                        if (canJump(player,row, col, row+1, col-1, row+2, col-2))
                             moves.add(new CheckersMoves(row, col, row+2, col-2));
-                        if (canJump(player,row,  row-1, col-1, row-2, col-2))
+                        if (canJump(player,row, col, row-1, col-1, row-2, col-2))
                             moves.add(new CheckersMoves(row, col, row-2, col-2));
                     }
                 }
@@ -255,13 +255,13 @@ public class Checkers extends JPanel {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
                         if (board[row][col] == player || board[row][col] == playerKing){
-                            if (canMove(player,row,row+1,col+1))
+                            if (canMove(player,row, col,row+1,col+1))
                                 moves.add(new CheckersMoves(row,col,row+1,col+1));
-                            if (canMove(player,row,row-1,col+1))
+                            if (canMove(player,row, col, row-1,col+1))
                                 moves.add(new CheckersMoves(row,col,row-1,col+1));
-                            if (canMove(player,row,row+1,col-1))
+                            if (canMove(player,row,col,row+1,col-1))
                                 moves.add(new CheckersMoves(row,col,row+1,col-1));
-                            if (canMove(player,row,row-1,col-1))
+                            if (canMove(player,row,col,row-1,col-1))
                                 moves.add(new CheckersMoves(row,col,row-1,col-1));
                         }
                     }
@@ -279,7 +279,6 @@ public class Checkers extends JPanel {
         }
 
         CheckersMoves[] getPossibleJumpsFrom(int player, int row, int col) {
-
             int playerKing;
             if (player == RED)
                 playerKing = KING_R;
@@ -288,13 +287,13 @@ public class Checkers extends JPanel {
             ArrayList<CheckersMoves> moves = new ArrayList<CheckersMoves>();
             if (board[row][col] == player || board[row][col] == playerKing)
             {
-                if (canJump(player,row,row+1, col+1, row+2, col+2))
+                if (canJump(player,row, col,row+1, col+1, row+2, col+2))
                     moves.add(new CheckersMoves(row, col, row+2, col+2));
-                if (canJump(player,row, row-1, col+1, row-2, col+2))
+                if (canJump(player,row, col, row-1, col+1, row-2, col+2))
                     moves.add(new CheckersMoves(row, col, row-2, col+2));
-                if (canJump(player,row, row+1, col-1, row+2, col-2))
+                if (canJump(player,row, col,row+1, col-1, row+2, col-2))
                     moves.add(new CheckersMoves(row, col, row+2, col-2));
-                if (canJump(player, row, row-1, col-1, row-2, col-2))
+                if (canJump(player, row, col,row-1, col-1, row-2, col-2))
                     moves.add(new CheckersMoves(row, col, row-2, col-2));
             }
             if (moves.size() == 0)
@@ -308,29 +307,33 @@ public class Checkers extends JPanel {
         }
 
 
-        private boolean canMove(int player, int r1, int r2, int c2) {
+        private boolean canMove(int player, int r1, int c1, int r2, int c2) {
 
             if (r2 < 0 || r2 >= 8 || c2 < 0 || c2 >= 8 || board[r2][c2] != EMPTY)
                 return false;
-
+            if(player == RED && board[r1][c1]==KING_R) return true;
+            if(player == BLACK && board[r1][c1]==KING_B) return true;
             if (player == RED) {
                 if (r2 > r1)
                     return false;
                 return true;
             }
-            else {
+           if (player == BLACK) {
                 if (r2 < r1)
                     return false;
                 return true;
             }
 
+           return false;
         }
 
-        private boolean canJump(int player,int r1, int r2, int c2, int r3, int c3) {
+        private boolean canJump(int player,int r1, int c1, int r2, int c2, int r3, int c3) {
 
             if (r3 < 0 || r3 >= 8 || c3 < 0 || c3 >= 8 || board[r3][c3] != EMPTY)
                 return false;
 
+            if(player == RED && board[r1][c1]==KING_R && (board[r2][c2] == KING_B || board[r2][c2] == BLACK)) return true;
+            if(player == BLACK && board[r1][c1]==KING_B && (board[r2][c2] == KING_R || board[r2][c2] == RED)) return true;
             if (player == RED) {
                 if (r3 > r1 )
                     return false;
@@ -338,14 +341,14 @@ public class Checkers extends JPanel {
                     return false;
                 return true;
             }
-
-           else {
+            if(player == BLACK) {
                 if (r3 < r1)
                     return false;
                 if (board[r2][c2] != RED && board[r2][c2] != KING_R )
                     return false;
                 return true;
             }
+            return false;
         }
     }
 }
